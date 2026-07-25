@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 const CHATKIT_SESSION_COOKIE = "propvest_chatkit_demo_user_id";
 const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const OPENAI_CHATKIT_SESSIONS_URL = "https://api.openai.com/v1/chatkit/sessions";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   const workflowId = process.env.OPENAI_CHATKIT_WORKFLOW_ID;
 
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existingUserId = request.cookies.get(CHATKIT_SESSION_COOKIE)?.value;
+  const existingUserId = readCookie(request, CHATKIT_SESSION_COOKIE);
   const userId = existingUserId || `demo_${randomUUID()}`;
 
   let upstream: Response;
@@ -53,17 +54,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const payload = (await upstream.json().catch(() => ({}))) as {
+  const session = (await upstream.json().catch(() => ({}))) as {
     client_secret?: string;
-    expires_after?: unknown;
     error?: { message?: string } | string;
   };
 
   if (!upstream.ok) {
     const message =
-      typeof payload.error === "string"
-        ? payload.error
-        : payload.error?.message || upstream.statusText || "Failed to create ChatKit session";
+      typeof session.error === "string"
+        ? session.error
+        : session.error?.message || upstream.statusText || "Failed to create ChatKit session";
 
     return withDemoUserCookie(
       NextResponse.json({ error: message }, { status: upstream.status }),
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!payload.client_secret) {
+  if (!session.client_secret) {
     return withDemoUserCookie(
       NextResponse.json(
         { error: "OpenAI response did not include a ChatKit client secret" },
@@ -84,13 +84,31 @@ export async function POST(request: NextRequest) {
   }
 
   return withDemoUserCookie(
-    NextResponse.json({
-      client_secret: payload.client_secret,
-      expires_after: payload.expires_after ?? null,
-    }),
+    NextResponse.json({ client_secret: session.client_secret }),
     existingUserId,
     userId,
   );
+}
+
+function readCookie(request: Request, name: string) {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return undefined;
+
+  const cookie = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+
+  if (!cookie) return undefined;
+
+  const value = cookie.slice(name.length + 1);
+  if (!value) return undefined;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
 }
 
 function withDemoUserCookie(response: NextResponse, existingUserId: string | undefined, userId: string) {
