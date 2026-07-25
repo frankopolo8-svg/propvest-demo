@@ -6,6 +6,7 @@ Single Next.js application for a full-page OpenAI ChatKit demo, deployable direc
 
 - `OPENAI_API_KEY` - server-only OpenAI API key. Never expose this with a `NEXT_PUBLIC_` prefix.
 - `OPENAI_CHATKIT_WORKFLOW_ID` - ChatKit workflow ID used when creating sessions.
+- `NEXT_PUBLIC_OPENAI_CHATKIT_DOMAIN_KEY` - public ChatKit domain key for the browser integration.
 
 ## Development
 

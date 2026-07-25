@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 
+const chatkitDomainKey = process.env.NEXT_PUBLIC_OPENAI_CHATKIT_DOMAIN_KEY;
+
 async function getClientSecret(currentSecret: string | null) {
   if (currentSecret) return currentSecret;
 
@@ -30,7 +32,13 @@ async function getClientSecret(currentSecret: string | null) {
 export function ChatKitPage() {
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const api = useMemo(() => ({ getClientSecret }), []);
+  const api = useMemo(
+    () => ({
+      getClientSecret,
+      ...(chatkitDomainKey ? { domainKey: chatkitDomainKey } : {}),
+    }),
+    [],
+  );
   const chatkit = useChatKit({
     api,
     onReady: () => {
