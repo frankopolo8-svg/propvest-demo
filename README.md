@@ -1,8 +1,17 @@
-# OpenAI ChatKit Starter Templates
+# Propvest Demo
 
-This repository contains two starter apps as reference implementations of minimal ChatKit integrations.
+Single Next.js application for a full-page OpenAI ChatKit demo, deployable directly on Vercel.
 
-You can run the following examples:
+## Required environment variables
 
-- [**ChatKit**](chatkit) - example of a self-hosted ChatKit integration.
-- [**Managed ChatKit**](managed-chatkit) – example of a managed ChatKit integration with hosted workflows.
+- `OPENAI_API_KEY` - server-only OpenAI API key. Never expose this with a `NEXT_PUBLIC_` prefix.
+- `OPENAI_CHATKIT_WORKFLOW_ID` - ChatKit workflow ID used when creating sessions.
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. The app creates ChatKit sessions through `POST /api/chatkit/session`.
