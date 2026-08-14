@@ -47,7 +47,7 @@ export function ChatKitPage() {
 
   function reset() { setDraft(""); setCriteria({}); setResults(null); setError(null); setMessages([{ role: "assistant", text: "Hello, I’m your real estate assistant. Tell me where and how you’d like to live, in your own words." }]); }
 
-  return <main className="chatbot-page"><header><a className="brand" href="/"><span>p</span>propvest.</a></header><GlobalPropertyShowcase />
+  return <main className="chatbot-page"><header><a className="brand" href="/"><span>p</span>propvest.</a></header><GlobalPropertyShowcase brief={criteria} />
     <section className="chat-window" id="property-chat"><div className="chat-head"><div><p>Global property intelligence</p><h1>Real Estate Expert</h1><small>● Here to help</small></div><button onClick={reset}>{ui.newChat}</button></div>
       <div className="thread" aria-live="polite">{messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><div className="bubble">{message.text}</div></div>)}{loading && <div className="typing"><i/><i/><i/></div>}{error && <p className="search-error" role="alert">{error}</p>}{results && <SearchResults results={results} />}</div>
       <div className="chat-suggestions" aria-label="Suggested prompts">{suggestions.map((suggestion) => <button key={suggestion} onClick={() => setDraft(suggestion)}>{suggestion}</button>)}</div>
