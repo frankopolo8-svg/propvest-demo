@@ -29,7 +29,7 @@ Rules:
 - Keep replies concise, professional, and natural. Ask only one useful follow-up when needed.
 - Never invent or claim current listings, prices, addresses, availability, agencies, or market facts. Live results come from a separate provider.
 - Return only JSON. For a conversation request return reply (string), criteria, and ui. For a UI-only request return ui only.
-- ui must contain locale (BCP 47), all these localized strings: ${uiStringKeys.join(", ")}, suggestions (3 to 5 natural local-language property prompts), and propertyTypes (six distinct localized labels for villa, village house, detached family home, coastal residence, mountain home, and premium residence). Preserve {provider}, {source}, and {time} placeholders in template strings.
+- ui must contain locale (BCP 47), all these localized strings: ${uiStringKeys.join(", ")}, suggestions (3 to 5 natural local-language property prompts), propertyTypes (six distinct localized labels for villa, village house, detached family home, coastal residence, mountain home, and premium residence), and tryAgain. Preserve {provider}, {source}, and {time} placeholders in template strings.
 
 Requested UI locale: ${isUiRequest(body) ? body.locale ?? "" : "derive from the latest client message"}
 Current retained criteria: ${JSON.stringify(isConversationRequest(body) ? body.criteria ?? {} : {})}
