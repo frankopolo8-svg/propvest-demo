@@ -16,8 +16,10 @@ type Turn = { role: "assistant" | "user"; text: string };
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { messages?: Turn[]; criteria?: Criteria } | null;
-  const latest = body?.messages?.at(-1);
-  if (!body || !latest || latest.role !== "user") return NextResponse.json({ error: "A user message is required." }, { status: 400 });
+  if (!body || !Array.isArray(body.messages)) return NextResponse.json({ error: "A valid messages array is required." }, { status: 400 });
+
+  const latest = body.messages.at(-1);
+  if (!latest || latest.role !== "user") return NextResponse.json({ error: "A user message is required." }, { status: 400 });
 
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_CHAT_MODEL;
