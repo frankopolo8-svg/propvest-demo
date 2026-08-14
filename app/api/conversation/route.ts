@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { uiStringKeys, type UiCopy } from "../../../lib/ui-copy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   if (!apiKey || !model) return NextResponse.json({ error: "Multilingual conversation is not configured." }, { status: 503 });
 
   const transcript = body.messages.slice(-12).map((message) => `${message.role === "user" ? "Client" : "Assistant"}: ${message.text}`).join("\n");
-  const prompt = `You are a calm, expert global real-estate assistant in a chat-first application.\n\nRules:\n- Reply in the language of the client's latest message, unless they explicitly request another language.\n- Understand any language you can reliably serve; never default to English because the UI is English.\n- Keep the reply concise, professional, and natural. Ask only one useful follow-up when needed.\n- Preserve prior criteria unless the client changes them. Treat towns, villages, neighborhoods, islands, and local place-name variants as valid exact locations.\n- Never invent or claim current listings, prices, addresses, availability, agencies, or market facts. Live results come from a separate provider.\n- Return only JSON, with: reply (string), criteria (object with optional location, mode sale|rent, maxPrice number, minBedrooms number, allowNearby boolean, propertyType string), and ui (object with newChat, input, clear, send, liveDisclaimer translated into the reply language). Populate only criteria explicitly supplied or clearly implied by the client.\n\nCurrent retained criteria: ${JSON.stringify(body.criteria ?? {})}\n\nConversation:\n${transcript}`;
+  const prompt = `You are a calm, expert global real-estate assistant in a chat-first application.\n\nRules:\n- Reply in the language of the client's latest message, unless they explicitly request another language.\n- Understand any language you can reliably serve; never default to English because the UI is English.\n- Keep the reply concise, professional, and natural. Ask only one useful follow-up when needed.\n- Preserve prior criteria unless the client changes them. Treat towns, villages, neighborhoods, islands, and local place-name variants as valid exact locations.\n- Never invent or claim current listings, prices, addresses, availability, agencies, or market facts. Live results come from a separate provider.\n- Return only JSON, with: reply (string), criteria (object with optional location, mode sale|rent, maxPrice number, minBedrooms number, allowNearby boolean, propertyType string), and ui. The ui object must include locale (a BCP 47 locale tag), every named UI string in this exact list: newChat, input, clear, send, liveDisclaimer, greeting, propertySupport, propertyIdeas, demoConcepts, propertyDisclaimer, photos, openGallery, closeGallery, previousPhoto, nextPhoto, illustrativeDemo, syntheticNotice, suggestedPrompts, propertyRequest, globalPropertyIntelligence, realEstateExpert, hereToHelp, exactMatches, nearbyAlternatives, verifiedResults, noResults, rentPerMonth, beds, baths, retrievedFrom, verifyListing; plus suggestions (an array of 3 to 5 short, natural property-search prompts). Translate all UI values naturally into the reply language. Keep placeholders {provider}, {time}, and {source} unchanged. Populate only criteria explicitly supplied or clearly implied by the client.\n\nCurrent retained criteria: ${JSON.stringify(body.criteria ?? {})}\n\nConversation:\n${transcript}`;
 
   try {
     const upstream = await fetch("https://api.openai.com/v1/responses", {
@@ -67,10 +68,15 @@ function parseAssistantResponse(text: string) {
   return { reply: text.trim(), criteria: {}, ui: {} };
 }
 
-function sanitizeUi(value: unknown) {
+function sanitizeUi(value: unknown): Partial<UiCopy> {
   if (!value || typeof value !== "object") return {};
   const input = value as Record<string, unknown>;
-  return Object.fromEntries(["newChat", "input", "clear", "send", "liveDisclaimer"].flatMap((key) => typeof input[key] === "string" ? [[key, input[key].trim().slice(0, 160)]] : []));
+  const strings = Object.fromEntries(uiStringKeys.flatMap((key) => typeof input[key] === "string" ? [[key, input[key].trim().slice(0, 240)]] : []));
+  const suggestions = Array.isArray(input.suggestions)
+    ? input.suggestions.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 160)).slice(0, 5)
+    : undefined;
+  const locale = typeof input.locale === "string" && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(input.locale) ? input.locale : undefined;
+  return { ...strings, ...(suggestions ? { suggestions } : {}), ...(locale ? { locale } : {}) } as Partial<UiCopy>;
 }
 
 function sanitizeCriteria(value: unknown): Criteria {
