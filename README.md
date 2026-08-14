@@ -2,6 +2,10 @@
 
 A Next.js property-search UI that displays only listings retrieved from a configured external provider. It does not ship demo inventory, fabricated asking prices, or inferred availability.
 
+## Configure multilingual conversation
+
+Set `OPENAI_API_KEY` and `OPENAI_CHAT_MODEL` as server-only variables. The conversation route uses the client’s latest message to select the reply language, carries the property brief across language changes, and returns translated UI labels. It never creates live-listing facts; listing results still come only from the configured provider.
+
 ## Configure live inventory
 
 Set these server-only variables in [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables):
