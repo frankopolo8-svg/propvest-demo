@@ -12,6 +12,8 @@ const imageSets = [
   [image("photo-1600607687920-4e2a09cf159d"), image("photo-1600607688969-a5bfcd646154"), image("photo-1600607687644-c7171b42498f")],
   [image("photo-1510798831971-661eb04b3739"), image("photo-1505693416388-ac5ce068fe85"), image("photo-1484101403633-562f891dc89a")],
   [image("photo-1497366811353-6870744d04b2"), image("photo-1486406146926-c627a92ad1ab"), image("photo-1497366754035-f200968a6e72")],
+  [image("photo-1449158743715-0a90ebb6d2d8"), image("photo-1600585152915-d208bec867a1"), image("photo-1600047509807-ba8f99d2cdde")],
+  [image("photo-1564013799919-ab600027ffc6"), image("photo-1600573472550-8090b5e0745e"), image("photo-1600210491892-03d54c0aaf87")],
 ];
 
 export function GlobalPropertyShowcase({ brief = {}, copy }: { brief?: DemoBrief; copy: UiCopy }) {
@@ -36,7 +38,8 @@ function createConcepts(brief: DemoBrief, copy: UiCopy): DemoProperty[] {
   const beds = brief.minBedrooms || 2;
   const price = (ratio: number) => budget ? formatPrice(Math.max(35_000, Math.round(budget * ratio))) : ["€165k", "€320k", "€640k", "€1.25m"][Math.round(ratio * 3)];
   const concepts = [
-    [copy.exactMatches, type, 0.9], [copy.demoConcepts, type, 0.72], [copy.propertyIdeas, type, 1], [copy.propertySupport, type, 1.12],
+    [copy.bestMatch, type, 0.92], [copy.bestValue, type, 0.78], [copy.lowerCostOption, type, 0.62],
+    [copy.largerOption, type, 0.98], [copy.premiumOption, type, 1.08], [copy.alternativeStyle, type, 0.88],
   ] as const;
   return concepts.map(([label, title, ratio], index) => ({ label, title, location, type, price: price(ratio), facts: `${beds + (index === 2 ? 1 : 0)} ${copy.beds} · ${beds > 2 ? 2 : 1} ${copy.baths} · ${70 + index * 35} m²`, description: copy.propertyDisclaimer, features: [copy.propertySupport, copy.propertyIdeas, copy.demoConcepts], images: imageSets[index] }));
 }

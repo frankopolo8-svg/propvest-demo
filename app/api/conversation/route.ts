@@ -16,8 +16,8 @@ export async function POST(request: Request) {
   if (isConversationRequest(body) && (!latest || latest.role !== "user")) return NextResponse.json({ error: "A user message is required." }, { status: 400 });
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_CHAT_MODEL;
-  if (!apiKey || !model) return NextResponse.json({ error: "Multilingual conversation is not configured." }, { status: 503 });
+  const model = process.env.OPENAI_CHAT_MODEL || "gpt-4.1-mini";
+  if (!apiKey) return NextResponse.json({ error: "Multilingual conversation is not configured." }, { status: 503 });
 
   const transcript = isConversationRequest(body) ? body.messages.slice(-12).map((message) => `${message.role === "user" ? "Client" : "Assistant"}: ${message.text}`).join("\n") : "";
   const prompt = `You are a calm, expert global real-estate assistant in a chat-first application.
