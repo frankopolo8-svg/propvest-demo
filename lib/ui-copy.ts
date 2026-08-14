@@ -7,7 +7,7 @@ export const uiStringKeys = [
 ] as const;
 
 export type UiStringKey = (typeof uiStringKeys)[number];
-export type UiCopy = Record<UiStringKey, string> & { suggestions: string[]; locale?: string };
+export type UiCopy = Record<UiStringKey, string> & { suggestions: string[]; propertyTypes: string[]; locale?: string };
 
 export const defaultUi: UiCopy = {
   newChat: "New chat", input: "Tell me what you’re looking for…", clear: "Clear", send: "Send",
@@ -24,4 +24,5 @@ export const defaultUi: UiCopy = {
   verifyListing: "Verify listing and availability", requestFailed: "We couldn’t complete that request. Please try again.",
   startDictation: "Start dictation", stopDictation: "Stop dictation", bestMatch: "Best match", bestValue: "Best value", lowerCostOption: "Lower-cost option", largerOption: "Larger option", premiumOption: "Premium option", alternativeStyle: "Alternative style",
   suggestions: ["Apartments in Barcelona under €350,000", "Luxury villas in Mykonos", "Affordable village homes in Italy", "Family homes near the beach", "Investment properties worldwide"],
+  propertyTypes: ["Modern villa", "Village house", "Detached family home", "Coastal residence", "Mountain home", "Premium residence"],
 };
