@@ -4,7 +4,7 @@ import { PropertySearchConfigurationError, PropertySearchProviderError, type Pro
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type DemoRequest = PropertySearchRequest & { locale?: string };
+type DemoRequest = PropertySearchRequest & { locale?: string; propertyType?: string };
 type DemoListing = { id: string; title: string; location: string; price: number; currency: string; mode: "sale" | "rent"; bedrooms: number; bathrooms: number; areaSqm: number; features: string[]; imageUrl: string; listingUrl: string; source: string; retrievedAt: string };
 
 export async function POST(request: Request) {
