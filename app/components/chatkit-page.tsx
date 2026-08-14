@@ -20,6 +20,14 @@ export function ChatKitPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const locale = navigator.language;
+    fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "ui", locale }) })
+      .then((response) => response.ok ? response.json() as Promise<{ ui?: Partial<UiCopy> }> : undefined)
+      .then((result) => { if (result?.ui) setUi((current) => ({ ...current, ...result.ui })); })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!ui.locale) return;
     document.documentElement.lang = ui.locale;
     document.documentElement.dir = /^(ar|fa|he|ur)(-|$)/i.test(ui.locale) ? "rtl" : "ltr";
@@ -34,7 +42,7 @@ export function ChatKitPage() {
     try {
       const conversation = await fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, criteria }) });
       const turn = await conversation.json() as ConversationResponse;
-      if (!conversation.ok || !turn.reply) throw new Error(turn.error || "Conversation unavailable.");
+      if (!conversation.ok || !turn.reply) throw new Error();
       if (turn.ui) setUi((current) => ({ ...current, ...turn.ui }));
       const nextCriteria = mergeCriteria(criteria, turn.criteria ?? {});
       setCriteria(nextCriteria);
@@ -42,9 +50,9 @@ export function ChatKitPage() {
       if (!nextCriteria.location) return;
       const response = await fetch("/api/property-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: nextCriteria.location, mode: nextCriteria.mode ?? "sale", maxPrice: nextCriteria.maxPrice, minBedrooms: nextCriteria.minBedrooms, allowNearby: nextCriteria.allowNearby ?? false }) });
       const body = await response.json() as SearchResponse & { error?: string };
-      if (!response.ok) throw new Error(body.error || "Property search failed.");
+      if (!response.ok) throw new Error();
       setResults(body);
-    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Request failed."); }
+    } catch { setError(ui.requestFailed); }
     finally { setLoading(false); }
   }
 
