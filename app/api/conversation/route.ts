@@ -42,14 +42,29 @@ ${transcript}`;
     const outputText = payload.output_text || payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text" && typeof item.text === "string")?.text;
     if (!upstream.ok || !outputText) {
       console.error("conversation provider request failed", { status: upstream.status, providerMessage: payload.error?.message || "missing output text" });
-      return NextResponse.json({ error: "The conversation service failed." }, { status: 502 });
+      return NextResponse.json(isConversationRequest(body) ? demoConversation(body, body.locale) : { ui: {} }, { headers: { "Cache-Control": "no-store", "X-Propvest-Mode": "illustrative-demo" } });
     }
     const result = parseAssistantResponse(outputText);
     return NextResponse.json(isUiRequest(body) ? { ui: result.ui } : result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("conversation provider request threw", { message: error instanceof Error ? error.message : "unknown error" });
-    return NextResponse.json({ error: "The conversation service is unavailable." }, { status: 502 });
+    return NextResponse.json(isConversationRequest(body) ? demoConversation(body, body.locale) : { ui: {} }, { headers: { "Cache-Control": "no-store", "X-Propvest-Mode": "illustrative-demo" } });
   }
+}
+
+function demoConversation(body: ConversationRequest, locale?: string) {
+  const text = body.messages.at(-1)?.text || "";
+  const lower = text.toLocaleLowerCase();
+  const investment = /investment|επενδ|inversi|investissement|investition|investimento|استثمار|投资|投資/.test(lower);
+  const location = investment && /worldwide|world|παγκόσ|mundial|monde|weltweit|mondo|عالم|世界/.test(lower) ? "Worldwide" : body.criteria?.location;
+  const criteria: Criteria = { ...body.criteria, ...(location ? { location } : {}), ...(investment ? { propertyType: "Investment property" } : {}) };
+  return { reply: demoReply(locale, investment), criteria, ui: {} };
+}
+
+function demoReply(locale: string | undefined, investment: boolean) {
+  const language = (locale || "en").split("-")[0];
+  if (!investment) return { el: "Παρουσιάζω ενδεικτικές επιλογές για το αίτημά σας. Μπορείτε να βελτιώσετε τοποθεσία, προϋπολογισμό ή τύπο ακινήτου.", es: "Te mostraré opciones ilustrativas para tu solicitud. Puedes concretar ubicación, presupuesto o tipo de propiedad.", fr: "Je vais vous présenter des options illustratives. Vous pouvez préciser le lieu, le budget ou le type de bien.", de: "Ich zeige Ihnen passende illustrative Optionen. Sie können Ort, Budget oder Immobilientyp weiter eingrenzen.", it: "Ti mostrerò opzioni illustrative pertinenti. Puoi precisare luogo, budget o tipologia.", ar: "سأعرض خيارات توضيحية مناسبة لطلبك. يمكنك تحديد الموقع أو الميزانية أو نوع العقار.", pt: "Vou mostrar opções ilustrativas relevantes. Pode especificar a localização, o orçamento ou o tipo de imóvel.", tr: "Talebinize uygun örnek seçenekler göstereceğim. Konumu, bütçeyi veya mülk türünü netleştirebilirsiniz.", zh: "我将为您展示相关的示例房产选择。您可以进一步说明地点、预算或房产类型。", ja: "ご希望に合う参考物件をご案内します。場所、予算、物件タイプをさらに絞り込めます。" }[language] || "I’ll show illustrative options for your request. You can refine the location, budget, or property type.";
+  return { el: "Παρακάτω θα βρείτε έξι ενδεικτικές επενδυτικές επιλογές από όλο τον κόσμο. Είναι σαφώς επισημασμένες ως demo και μπορείτε να ζητήσετε χώρα, προϋπολογισμό ή απόδοση.", es: "A continuación encontrarás seis opciones de inversión ilustrativas de todo el mundo. Están marcadas como demo; puedes indicar país, presupuesto o rentabilidad.", fr: "Vous trouverez ci-dessous six options d’investissement illustratives dans le monde entier. Elles sont clairement indiquées comme démo ; vous pouvez préciser pays, budget ou rendement.", de: "Unten finden Sie sechs illustrative Anlageoptionen aus aller Welt. Sie sind klar als Demo gekennzeichnet; nennen Sie gern Land, Budget oder Renditewunsch.", it: "Qui sotto trovi sei opzioni d’investimento illustrative da tutto il mondo. Sono chiaramente indicate come demo; puoi specificare paese, budget o rendimento.", ar: "ستجد أدناه ستة خيارات استثمارية توضيحية من أنحاء العالم. وهي مميزة بوضوح كمحتوى تجريبي؛ يمكنك تحديد الدولة أو الميزانية أو العائد.", pt: "Abaixo estão seis opções de investimento ilustrativas de todo o mundo. Estão claramente identificadas como demonstração; pode indicar país, orçamento ou rendimento.", tr: "Aşağıda dünya genelinden altı örnek yatırım seçeneği bulacaksınız. Bunlar açıkça demo olarak işaretlenmiştir; ülke, bütçe veya getiri tercihinizi belirtebilirsiniz.", zh: "以下是来自世界各地的六个示例投资选择。它们均明确标注为演示内容；您可以说明国家、预算或收益偏好。", ja: "以下に世界各地の参考投資物件を6件ご案内します。すべてデモとして明示されており、国・予算・利回りの希望をお伝えいただけます。" }[language] || "Below are six illustrative worldwide investment options. They are clearly marked as demo content; tell me your country, budget, or return preference.";
 }
 
 function isConversationRequest(value: unknown): value is ConversationRequest { const locale = value && typeof value === "object" ? (value as { locale?: unknown }).locale : undefined; return !!value && typeof value === "object" && Array.isArray((value as { messages?: unknown }).messages) && (value as { messages: unknown[] }).messages.every(isTurn) && (locale === undefined || isLocale(locale)); }
