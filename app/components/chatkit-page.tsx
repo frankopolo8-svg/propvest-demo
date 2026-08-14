@@ -88,7 +88,7 @@ export function ChatKitPage() {
   }
 
   async function searchProperties(nextCriteria: Criteria) {
-    const response = await fetch("/api/property-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: nextCriteria.location, mode: nextCriteria.mode ?? "sale", maxPrice: nextCriteria.maxPrice, minBedrooms: nextCriteria.minBedrooms, allowNearby: nextCriteria.allowNearby ?? false, locale }) });
+    const response = await fetch("/api/property-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: nextCriteria.location, mode: nextCriteria.mode ?? "sale", maxPrice: nextCriteria.maxPrice, minBedrooms: nextCriteria.minBedrooms, propertyType: nextCriteria.propertyType, allowNearby: nextCriteria.allowNearby ?? false, locale }) });
     const body = await response.json() as SearchResponse & { error?: string };
     if (!response.ok) throw new Error();
     setResults(body);

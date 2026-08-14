@@ -25,7 +25,7 @@ function parseCriteria(value: unknown): DemoRequest | null {
   const input = value as Record<string, unknown>;
   const location = typeof input.location === "string" ? input.location.trim() : "";
   if (!location || (input.mode !== "sale" && input.mode !== "rent")) return null;
-  return { location, mode: input.mode, maxPrice: number(input.maxPrice), minBedrooms: number(input.minBedrooms), allowNearby: input.allowNearby === true, locale: typeof input.locale === "string" ? input.locale : undefined };
+  return { location, mode: input.mode, maxPrice: number(input.maxPrice), minBedrooms: number(input.minBedrooms), propertyType: typeof input.propertyType === "string" ? input.propertyType.trim().slice(0, 100) || undefined : undefined, allowNearby: input.allowNearby === true, locale: typeof input.locale === "string" ? input.locale : undefined };
 }
 function number(value: unknown) { return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined; }
 function demoResults(criteria: DemoRequest) {
