@@ -14,9 +14,11 @@ type Criteria = {
 
 type Turn = { role: "assistant" | "user"; text: string };
 
+type ConversationRequest = { messages: Turn[]; criteria?: Criteria };
+
 export async function POST(request: Request) {
-  const body = await request.json().catch(() => null) as { messages?: Turn[]; criteria?: Criteria } | null;
-  if (!body || !Array.isArray(body.messages)) return NextResponse.json({ error: "A valid messages array is required." }, { status: 400 });
+  const body = await request.json().catch(() => null);
+  if (!isConversationRequest(body)) return NextResponse.json({ error: "A valid messages array is required." }, { status: 400 });
 
   const latest = body.messages.at(-1);
   if (!latest || latest.role !== "user") return NextResponse.json({ error: "A user message is required." }, { status: 400 });
@@ -41,6 +43,19 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "The conversation service is unavailable." }, { status: 502 });
   }
+}
+
+function isConversationRequest(value: unknown): value is ConversationRequest {
+  if (!value || typeof value !== "object" || !Array.isArray((value as { messages?: unknown }).messages)) return false;
+  return (value as { messages: unknown[] }).messages.every(isTurn);
+}
+
+function isTurn(value: unknown): value is Turn {
+  return !!value
+    && typeof value === "object"
+    && ((value as { role?: unknown }).role === "assistant" || (value as { role?: unknown }).role === "user")
+    && typeof (value as { text?: unknown }).text === "string"
+    && (value as { text: string }).text.trim().length > 0;
 }
 
 function parseAssistantResponse(text: string) {

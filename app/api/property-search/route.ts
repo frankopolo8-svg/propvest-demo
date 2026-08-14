@@ -10,10 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const criteria = await request.json().catch(() => null) as PropertySearchRequest | null;
-  if (!criteria?.location?.trim() || (criteria.mode !== "sale" && criteria.mode !== "rent")) {
-    return NextResponse.json({ error: "Location and search mode are required." }, { status: 400 });
-  }
+  const criteria = parseCriteria(await request.json().catch(() => null));
+  if (!criteria) return NextResponse.json({ error: "Location and search mode are required." }, { status: 400 });
 
   try {
     return NextResponse.json(await searchVerifiedListings(criteria), {
@@ -32,3 +30,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Property search failed. Please try again." }, { status: 502 });
   }
 }
+
+function parseCriteria(value: unknown): PropertySearchRequest | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Record<string, unknown>;
+  const location = typeof input.location === "string" ? input.location.trim() : "";
+  if (!location || (input.mode !== "sale" && input.mode !== "rent")) return null;
+
+  return {
+    location,
+    mode: input.mode,
+    currency: string(input.currency),
+    minPrice: number(input.minPrice),
+    maxPrice: number(input.maxPrice),
+    minBedrooms: number(input.minBedrooms),
+    minBathrooms: number(input.minBathrooms),
+    minAreaSqm: number(input.minAreaSqm),
+    features: Array.isArray(input.features) ? input.features.filter((feature): feature is string => typeof feature === "string") : undefined,
+    allowNearby: input.allowNearby === true ? true : undefined,
+  };
+}
+
+function string(value: unknown) { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
+function number(value: unknown) { return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined; }
