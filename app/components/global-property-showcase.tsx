@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import type { UiCopy } from "../../lib/ui-copy";
 
 export type DemoBrief = { location?: string; propertyType?: string; maxPrice?: number; minBedrooms?: number };
 type DemoProperty = { title: string; location: string; type: string; price: string; facts: string; description: string; features: string[]; images: string[]; label: string };
@@ -13,24 +14,24 @@ const imageSets = [
   [image("photo-1497366811353-6870744d04b2"), image("photo-1486406146926-c627a92ad1ab"), image("photo-1497366754035-f200968a6e72")],
 ];
 
-export function GlobalPropertyShowcase({ brief = {} }: { brief?: DemoBrief }) {
-  const properties = useMemo(() => createConcepts(brief), [brief.location, brief.propertyType, brief.maxPrice, brief.minBedrooms]);
+export function GlobalPropertyShowcase({ brief = {}, copy }: { brief?: DemoBrief; copy: UiCopy }) {
+  const properties = useMemo(() => createConcepts(brief, copy), [brief.location, brief.propertyType, brief.maxPrice, brief.minBedrooms]);
   const [selected, setSelected] = useState<DemoProperty | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
   const open = (property: DemoProperty) => { setSelected(property); setImageIndex(0); };
   const next = (direction: number) => { if (selected) setImageIndex((current) => (current + direction + selected.images.length) % selected.images.length); };
 
-  return <aside className="global-showcase" aria-label="Illustrative property support">
-    <div className="global-showcase-head"><div><p>Property support</p><h2>{brief.location ? `Illustrative ideas for ${brief.location}` : "Explore every way of living"}</h2></div><span>Demo concepts</span></div>
-    <p className="global-showcase-copy">These are responsive, synthetic concepts for the conversation—not live listings.</p>
-    <div className="global-property-rail">{properties.map((property) => <button className="global-property-card" key={property.label} onClick={() => open(property)} aria-label={`Open illustrative gallery for ${property.title}`}><div className="global-card-image"><img src={property.images[0]} alt="" /><span>{property.images.length} photos</span></div><div><p>{property.location}</p><h3>{property.title}</h3><strong>{property.price}</strong><small>{property.type} · {property.facts}</small></div></button>)}</div>
-    {selected && typeof document !== "undefined" && createPortal(<div className="demo-gallery" role="dialog" aria-modal="true" aria-label={`${selected.title} illustrative gallery`} onMouseDown={() => setSelected(null)}><section onMouseDown={(event) => event.stopPropagation()}><button className="demo-gallery-close" onClick={() => setSelected(null)} aria-label="Close gallery">×</button><div className="demo-gallery-image"><img src={selected.images[imageIndex]} alt="" /><button className="demo-gallery-arrow previous" onClick={() => next(-1)} aria-label="Previous photo">‹</button><button className="demo-gallery-arrow next" onClick={() => next(1)} aria-label="Next photo">›</button><span>{imageIndex + 1} / {selected.images.length} · Illustrative demo</span></div><div className="demo-gallery-copy"><p>{selected.location}</p><h2>{selected.title}</h2><strong>{selected.price}</strong><small>{selected.type} · {selected.facts}</small><p>{selected.description}</p><div>{selected.features.map((feature) => <span key={feature}>{feature}</span>)}</div><em>Synthetic concept only—not a verified property, price, or availability record.</em></div></section></div>, document.body)}
+  return <aside className="global-showcase" aria-label={copy.propertySupport}>
+    <div className="global-showcase-head"><div><p>{copy.propertySupport}</p><h2>{brief.location ? `${copy.propertyIdeas}: ${brief.location}` : copy.propertyIdeas}</h2></div><span>{copy.demoConcepts}</span></div>
+    <p className="global-showcase-copy">{copy.propertyDisclaimer}</p>
+    <div className="global-property-rail">{properties.map((property) => <button className="global-property-card" key={property.label} onClick={() => open(property)} aria-label={`${copy.openGallery}: ${property.title}`}><div className="global-card-image"><img src={property.images[0]} alt="" /><span>{property.images.length} {copy.photos}</span></div><div><p>{property.location}</p><h3>{property.title}</h3><strong>{property.price}</strong><small>{property.type} · {property.facts}</small></div></button>)}</div>
+    {selected && typeof document !== "undefined" && createPortal(<div className="demo-gallery" role="dialog" aria-modal="true" aria-label={`${selected.title} illustrative gallery`} onMouseDown={() => setSelected(null)}><section onMouseDown={(event) => event.stopPropagation()}><button className="demo-gallery-close" onClick={() => setSelected(null)} aria-label={copy.closeGallery}>×</button><div className="demo-gallery-image"><img src={selected.images[imageIndex]} alt="" /><button className="demo-gallery-arrow previous" onClick={() => next(-1)} aria-label={copy.previousPhoto}>‹</button><button className="demo-gallery-arrow next" onClick={() => next(1)} aria-label={copy.nextPhoto}>›</button><span>{imageIndex + 1} / {selected.images.length} · {copy.illustrativeDemo}</span></div><div className="demo-gallery-copy"><p>{selected.location}</p><h2>{selected.title}</h2><strong>{selected.price}</strong><small>{selected.type} · {selected.facts}</small><p>{selected.description}</p><div>{selected.features.map((feature) => <span key={feature}>{feature}</span>)}</div><em>{copy.syntheticNotice}</em></div></section></div>, document.body)}
   </aside>;
 }
 
-function createConcepts(brief: DemoBrief): DemoProperty[] {
-  const location = brief.location || "Worldwide";
-  const type = brief.propertyType || "home";
+function createConcepts(brief: DemoBrief, copy: UiCopy): DemoProperty[] {
+  const location = brief.location || copy.propertySupport;
+  const type = brief.propertyType || copy.propertyIdeas;
   const budget = brief.maxPrice;
   const beds = brief.minBedrooms || 2;
   const price = (ratio: number) => budget ? formatPrice(Math.max(35_000, Math.round(budget * ratio))) : ["€165k", "€320k", "€640k", "€1.25m"][Math.round(ratio * 3)];
@@ -40,6 +41,6 @@ function createConcepts(brief: DemoBrief): DemoProperty[] {
     ["Larger option", `Generous ${type} concept`, 1, ["Extra space", "Outdoor area", "Flexible rooms"]],
     ["Premium option", `Elevated ${type} concept`, 1.12, ["View", "Premium finish", "Entertaining space"]],
   ] as const;
-  return concepts.map(([label, title, ratio, features], index) => ({ label, title, location, type, price: price(ratio), facts: `${beds + (index === 2 ? 1 : 0)} beds · ${beds > 2 ? 2 : 1} baths · ${70 + index * 35} m²`, description: `${label} for the active brief in ${location}. The concept adapts to the requested location, property style, and budget rather than representing live availability.`, features: [...features], images: imageSets[index] }));
+  return concepts.map(([label, title, ratio, features], index) => ({ label, title, location, type, price: price(ratio), facts: `${beds + (index === 2 ? 1 : 0)} ${copy.beds} · ${beds > 2 ? 2 : 1} ${copy.baths} · ${70 + index * 35} m²`, description: `${label} for the active brief in ${location}. The concept adapts to the requested location, property style, and budget rather than representing live availability.`, features: [...features], images: imageSets[index] }));
 }
 function formatPrice(value: number) { return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(2)}m` : `€${Math.round(value / 1000)}k`; }
