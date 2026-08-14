@@ -1,79 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import Image from "next/image";
+import { FormEvent, useMemo, useState } from "react";
 
-const chatkitDomainKey = process.env.NEXT_PUBLIC_OPENAI_CHATKIT_DOMAIN_KEY;
+type Locale = "el" | "en";
+type Property = {
+  id: number; city: string; country: string; area: string; title: string; type: string;
+  price: number; currency: "EUR" | "USD" | "AED"; beds: number; baths: number; sqm: number;
+  mode: "sale" | "rent"; image: string; gallery: string[]; perks: string[]; description: string; coordinates: [number, number];
+};
 
-async function getClientSecret(currentSecret: string | null) {
-  if (currentSecret) return currentSecret;
+const properties: Property[] = [
+  { id: 1, city: "Athens", country: "Greece", area: "Kolonaki", title: "Sunlit penthouse above Kolonaki", type: "Penthouse", price: 1250000, currency: "EUR", beds: 3, baths: 3, sqm: 178, mode: "sale", image: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85"], perks: ["Acropolis view", "Private terrace", "Concierge"], description: "A quiet, light-filled residence with bespoke finishes and uninterrupted city views.", coordinates: [52, 40] },
+  { id: 2, city: "Lisbon", country: "Portugal", area: "Príncipe Real", title: "Contemporary garden residence", type: "Apartment", price: 890000, currency: "EUR", beds: 2, baths: 2, sqm: 124, mode: "sale", image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?auto=format&fit=crop&w=1200&q=85"], perks: ["Garden", "Parking", "Solar energy"], description: "Designed for effortless city living, moments from Lisbon's best galleries and restaurants.", coordinates: [28, 54] },
+  { id: 3, city: "Dubai", country: "UAE", area: "Palm Jumeirah", title: "Waterfront villa with private beach", type: "Villa", price: 11200000, currency: "AED", beds: 5, baths: 6, sqm: 680, mode: "sale", image: "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=85"], perks: ["Private beach", "Infinity pool", "Smart home"], description: "An exceptional island home pairing expansive interiors with a serene waterfront setting.", coordinates: [75, 46] },
+  { id: 4, city: "New York", country: "USA", area: "SoHo", title: "Restored loft in historic SoHo", type: "Loft", price: 9800, currency: "USD", beds: 2, baths: 2, sqm: 142, mode: "rent", image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=1200&q=85"], perks: ["Doorman", "Elevator", "Home office"], description: "Original proportions meet crisp contemporary design in this impeccably detailed loft.", coordinates: [19, 28] },
+  { id: 5, city: "Barcelona", country: "Spain", area: "Eixample", title: "Elegant modernist city apartment", type: "Apartment", price: 695000, currency: "EUR", beds: 3, baths: 2, sqm: 146, mode: "sale", image: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1600210491892-03d54c0aaf87?auto=format&fit=crop&w=1200&q=85"], perks: ["Balcony", "Original details", "Air conditioning"], description: "A beautifully proportioned home where restored heritage features meet everyday comfort.", coordinates: [41, 73] },
+  { id: 6, city: "Paris", country: "France", area: "Saint-Germain", title: "Refined Left Bank pied-à-terre", type: "Apartment", price: 1460000, currency: "EUR", beds: 2, baths: 2, sqm: 109, mode: "sale", image: "https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1200&q=85", gallery: ["https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=1200&q=85", "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85"], perks: ["River nearby", "Elevator", "Fireplace"], description: "An understated Parisian residence with exceptional natural light and timeless materials.", coordinates: [64, 24] },
+];
 
-  const response = await fetch("/api/chatkit/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
+const copy = {
+  en: { discover: "Discover your next address", hero: "Real estate, made personal.", sub: "Tell Aura what you are looking for. She will understand the details that matter.", prompt: "Try: A calm 2-bedroom in Athens under €900k with a terrace", search: "Search", filters: "Filters", curated: "Curated for you", map: "Live market map", results: "homes found", chat: "Ask Aura anything about homes, neighborhoods or your shortlist...", empty: "No residences match those filters.", reset: "Reset filters", details: "View details", contact: "Contact advisor", saved: "Saved", save: "Save", compare: "Compare", clear: "Clear", all: "All homes", sale: "For sale", rent: "For rent", price: "Price", type: "Home type", bedrooms: "Bedrooms", country: "Country", area: "Area", shortlist: "Shortlist", assistant: "Aura, your property advisor", intro: "I can narrow the world down to a place that feels like yours. Where would you like to begin?", reply: "I’ve refreshed the collection around your request. Use the filters to refine price, location and lifestyle.", gallery: "Gallery", overview: "Overview", features: "Features", close: "Close", month: "/ month" },
+  el: { discover: "Ανακαλύψτε τη νέα σας διεύθυνση", hero: "Ακίνητα, με προσωπική προσέγγιση.", sub: "Πείτε στην Aura τι αναζητάτε. Καταλαβαίνει όσα έχουν πραγματικά σημασία.", prompt: "Δοκιμάστε: Ήσυχο 2υπνο διαμέρισμα στην Αθήνα έως €900k με βεράντα", search: "Αναζήτηση", filters: "Φίλτρα", curated: "Επιλεγμένα για εσάς", map: "Χάρτης αγοράς", results: "ακίνητα βρέθηκαν", chat: "Ρωτήστε την Aura για ακίνητα, περιοχές ή τη λίστα σας...", empty: "Δεν υπάρχουν ακίνητα με αυτά τα φίλτρα.", reset: "Επαναφορά φίλτρων", details: "Προβολή ακινήτου", contact: "Επικοινωνία με σύμβουλο", saved: "Αποθηκεύτηκε", save: "Αποθήκευση", compare: "Σύγκριση", clear: "Καθαρισμός", all: "Όλα τα ακίνητα", sale: "Προς πώληση", rent: "Προς ενοικίαση", price: "Τιμή", type: "Τύπος", bedrooms: "Υπνοδωμάτια", country: "Χώρα", area: "Περιοχή", shortlist: "Αγαπημένα", assistant: "Aura, η σύμβουλος ακινήτων σας", intro: "Μπορώ να βρω ένα σπίτι που σας ταιριάζει πραγματικά. Από πού θέλετε να ξεκινήσουμε;", reply: "Ανανέωσα τα αποτελέσματα με βάση το αίτημά σας. Χρησιμοποιήστε τα φίλτρα για τιμή, τοποθεσία και παροχές.", gallery: "Gallery", overview: "Επισκόπηση", features: "Παροχές", close: "Κλείσιμο", month: "/ μήνα" },
+};
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    client_secret?: string;
-    error?: string;
-  };
-
-  if (!response.ok) {
-    throw new Error(payload.error ?? "Failed to create ChatKit session");
-  }
-
-  if (!payload.client_secret) {
-    throw new Error("ChatKit session response did not include a client secret");
-  }
-
-  return payload.client_secret;
+function formatPrice(property: Property, locale: Locale) {
+  return new Intl.NumberFormat(locale === "el" ? "el-GR" : "en-US", { style: "currency", currency: property.currency, maximumFractionDigits: 0 }).format(property.price) + (property.mode === "rent" ? ` ${copy[locale].month}` : "");
 }
 
 export function ChatKitPage() {
-  const [isReady, setIsReady] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const api = useMemo(
-    () => ({
-      getClientSecret,
-      ...(chatkitDomainKey ? { domainKey: chatkitDomainKey } : {}),
-    }),
-    [],
-  );
-  const chatkit = useChatKit({
-    api,
-    onReady: () => {
-      setErrorMessage(null);
-      setIsReady(true);
-    },
-    onError: ({ error }) => {
-      setErrorMessage(error.message || "ChatKit failed to load.");
-    },
-  });
+  const [locale, setLocale] = useState<Locale>("el"); const [query, setQuery] = useState(""); const [mode, setMode] = useState<"all" | "sale" | "rent">("all");
+  const [country, setCountry] = useState("all"); const [type, setType] = useState("all"); const [beds, setBeds] = useState("all"); const [budget, setBudget] = useState("all");
+  const [saved, setSaved] = useState<number[]>([]); const [compared, setCompared] = useState<number[]>([]); const [selected, setSelected] = useState<Property | null>(null); const [chat, setChat] = useState<string[]>([]); const [isSearching, setIsSearching] = useState(false);
+  const t = copy[locale];
+  const results = useMemo(() => properties.filter((p) => {
+    const haystack = `${p.title} ${p.city} ${p.country} ${p.area} ${p.type}`.toLowerCase();
+    return (!query || haystack.includes(query.toLowerCase())) && (mode === "all" || p.mode === mode) && (country === "all" || p.country === country) && (type === "all" || p.type === type) && (beds === "all" || p.beds >= Number(beds)) && (budget === "all" || p.price <= Number(budget));
+  }), [query, mode, country, type, beds, budget]);
+  const toggle = (id: number, value: number[], setter: (v: number[]) => void) => setter(value.includes(id) ? value.filter((item) => item !== id) : [...value, id]);
+  const reset = () => { setQuery(""); setMode("all"); setCountry("all"); setType("all"); setBeds("all"); setBudget("all"); };
+  const submitChat = (event: FormEvent) => { event.preventDefault(); if (!query.trim()) return; setIsSearching(true); window.setTimeout(() => { setChat((messages) => [...messages, query]); setIsSearching(false); }, 350); };
 
-  useEffect(() => {
-    if (isReady || errorMessage) return;
-
-    const timeout = window.setTimeout(() => {
-      setErrorMessage("ChatKit is taking longer than expected to load. Check the ChatKit script and session configuration.");
-    }, 15000);
-
-    return () => window.clearTimeout(timeout);
-  }, [errorMessage, isReady]);
-
-  return (
-    <main className="chatkit-shell">
-      <div className="chatkit-frame">
-        <ChatKit control={chatkit.control} className="chatkit-widget" />
-        {(!isReady || errorMessage) && (
-          <div className="chatkit-status" role={errorMessage ? "alert" : "status"}>
-            <div className="chatkit-status-card">
-              <p className="chatkit-status-eyebrow">Propvest ChatKit</p>
-              <h1>{errorMessage ? "ChatKit could not start" : "Loading ChatKit..."}</h1>
-              <p>{errorMessage ?? "Preparing the conversation interface."}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
-  );
+  return <main className="app-shell" lang={locale}>
+    <header className="topbar"><a className="brand" href="#top" aria-label="Propvest home"><span className="brand-mark">P</span> propvest<span>.</span></a><nav aria-label="Primary navigation"><a href="#homes">Homes</a><a href="#map">Explore map</a><a href="#how">How it works</a></nav><div className="top-actions"><span className="saved-count">{saved.length} {t.shortlist.toLowerCase()}</span><button className="language" onClick={() => setLocale(locale === "el" ? "en" : "el")}>{locale === "el" ? "EN" : "ΕΛ"}</button><button className="profile" aria-label="Account">FP</button></div></header>
+    <section className="hero" id="top"><div className="hero-copy"><p className="eyebrow">{t.discover}</p><h1>{t.hero}</h1><p>{t.sub}</p><div className="trust"><span>✦ 10K+ verified homes</span><span>◎ 36 countries</span></div></div><div className="hero-art" aria-hidden="true"><Image src="https://images.unsplash.com/photo-1600585152915-d208bec867a1?auto=format&fit=crop&w=1400&q=85" alt="" fill priority sizes="(max-width: 900px) 100vw, 48vw" /></div></section>
+    <section className="search-panel" aria-label="Property search"><form onSubmit={submitChat}><label className="search-field"><span>✦</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.prompt} aria-label={t.chat} /><button type="submit">{isSearching ? "..." : t.search} <span>↵</span></button></label></form><div className="quick-filters"><button className={mode === "all" ? "active" : ""} onClick={() => setMode("all")}>{t.all}</button><button className={mode === "sale" ? "active" : ""} onClick={() => setMode("sale")}>{t.sale}</button><button className={mode === "rent" ? "active" : ""} onClick={() => setMode("rent")}>{t.rent}</button><label>{t.country}<select value={country} onChange={(e) => setCountry(e.target.value)}><option value="all">All</option>{[...new Set(properties.map((p) => p.country))].map((item) => <option key={item}>{item}</option>)}</select></label><label>{t.type}<select value={type} onChange={(e) => setType(e.target.value)}><option value="all">All</option>{[...new Set(properties.map((p) => p.type))].map((item) => <option key={item}>{item}</option>)}</select></label><label>{t.bedrooms}<select value={beds} onChange={(e) => setBeds(e.target.value)}><option value="all">Any</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></label><label>{t.price}<select value={budget} onChange={(e) => setBudget(e.target.value)}><option value="all">Any</option><option value="700000">≤ 700k</option><option value="1000000">≤ 1M</option><option value="1500000">≤ 1.5M</option></select></label><button className="filter-reset" onClick={reset}>{t.clear}</button></div></section>
+    <section className="workspace"><div className="results-area" id="homes"><div className="section-heading"><div><p className="eyebrow">{t.curated}</p><h2>{results.length} {t.results}</h2></div><button className="text-button" onClick={reset}>{t.reset} ↗</button></div>{chat.length > 0 && <div className="aura-response"><span>✦</span><p><strong>{t.assistant}</strong>{t.reply}</p></div>}<div className="property-grid">{results.map((p) => <article className="property-card" key={p.id}><button className="image-wrap" onClick={() => setSelected(p)} aria-label={`${t.details}: ${p.title}`}><Image src={p.image} alt={p.title} fill sizes="(max-width: 760px) 100vw, (max-width: 1160px) 50vw, 33vw" /><span className="tag">{p.mode === "sale" ? t.sale : t.rent}</span><span className="image-count">▧ {p.gallery.length}</span></button><div className="card-content"><div className="card-title"><div><p>{p.area}, {p.city}</p><h3>{p.title}</h3></div><button className={saved.includes(p.id) ? "heart saved" : "heart"} onClick={() => toggle(p.id, saved, setSaved)} aria-label={t.save}>♥</button></div><div className="facts"><span>{p.beds} bd</span><span>{p.baths} ba</span><span>{p.sqm} m²</span></div><div className="card-bottom"><strong>{formatPrice(p, locale)}</strong><button className={compared.includes(p.id) ? "compare selected" : "compare"} onClick={() => toggle(p.id, compared, setCompared)}>{compared.includes(p.id) ? "✓ " : "+ "}{t.compare}</button></div></div></article>)}</div>{results.length === 0 && <div className="empty"><h3>{t.empty}</h3><button onClick={reset}>{t.reset}</button></div>}</div>
+      <aside className="side-panel" id="map"><div className="map-card"><div className="map-header"><div><p className="eyebrow">{t.map}</p><strong>Worldwide collection</strong></div><span className="live">Live</span></div><div className="map-surface">{properties.map((p) => <button key={p.id} className={results.some((r) => r.id === p.id) ? "map-pin" : "map-pin muted"} style={{ left: `${p.coordinates[0]}%`, top: `${p.coordinates[1]}%` }} onClick={() => setSelected(p)} aria-label={p.title}>€</button>)}<span className="map-label europe">EUROPE</span><span className="map-label america">AMERICAS</span><span className="map-label asia">ASIA</span></div><p className="map-note">Explore properties and nearby opportunities directly on the map.</p></div><div className="aura-card" id="how"><div className="aura-symbol">✦</div><div><p className="eyebrow">{t.assistant}</p><h3>{t.intro}</h3></div><button onClick={() => document.querySelector<HTMLInputElement>(".search-field input")?.focus()}>Start a conversation <span>→</span></button></div>{compared.length > 0 && <div className="compare-tray"><strong>{compared.length} {t.compare.toLowerCase()}</strong><button onClick={() => setCompared([])}>{t.clear}</button></div>}</aside></section>
+    {selected && <div className="modal-backdrop" role="presentation" onMouseDown={() => setSelected(null)}><section className="property-modal" role="dialog" aria-modal="true" aria-label={selected.title} onMouseDown={(e) => e.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)} aria-label={t.close}>×</button><div className="modal-gallery"><div className="gallery-main"><Image src={selected.gallery[0]} alt={`${selected.title} 1`} fill sizes="(max-width: 760px) 100vw, 60vw" /></div><div className="gallery-secondary"><Image src={selected.gallery[1]} alt={`${selected.title} 2`} fill sizes="(max-width: 760px) 100vw, 60vw" /></div></div><div className="modal-content"><p className="eyebrow">{selected.area}, {selected.city} · {selected.country}</p><h2>{selected.title}</h2><strong className="modal-price">{formatPrice(selected, locale)}</strong><div className="modal-facts"><span>{selected.beds} bedrooms</span><span>{selected.baths} bathrooms</span><span>{selected.sqm} m²</span></div><p className="description">{selected.description}</p><h3>{t.features}</h3><div className="perks">{selected.perks.map((perk) => <span key={perk}>✓ {perk}</span>)}</div><button className="contact">{t.contact} <span>→</span></button></div></section></div>}
+  </main>;
 }
