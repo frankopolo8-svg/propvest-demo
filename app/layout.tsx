@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Propvest ChatKit Demo",
-  description: "A single Next.js app with an OpenAI ChatKit interface.",
+  title: "Propvest | Global real estate, made personal",
+  description: "A premium AI-assisted global property search experience.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en">
-      <head>
-        <Script
-          src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"
-          strategy="beforeInteractive"
-        />
-      </head>
-      <body>{children}</body>
-    </html>
-  );
+  return <html lang="el"><body>{children}</body></html>;
 }
