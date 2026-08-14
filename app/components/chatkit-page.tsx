@@ -25,14 +25,6 @@ export function ChatKitPage() {
   const recognition = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
-    const locale = navigator.language;
-    fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "ui", locale }) })
-      .then((response) => response.ok ? response.json() as Promise<{ ui?: Partial<UiCopy> }> : undefined)
-      .then((result) => { if (result?.ui) setUi((current) => ({ ...current, ...result.ui })); })
-      .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
     if (!ui.locale) return;
     document.documentElement.lang = ui.locale;
     document.documentElement.dir = /^(ar|fa|he|ur)(-|$)/i.test(ui.locale) ? "rtl" : "ltr";
