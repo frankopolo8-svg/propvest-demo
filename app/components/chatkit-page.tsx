@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { GlobalPropertyShowcase } from "./global-property-showcase";
 
 type Listing = {
   id: string;
@@ -66,6 +67,7 @@ export function ChatKitPage() {
 
   return <main className="chatbot-page">
     <header><a className="brand" href="/"><span>p</span>propvest.</a></header>
+    <GlobalPropertyShowcase />
     <section className="chat-window" id="property-search">
       <div className="chat-head"><div><p>Global property intelligence</p><h1>Real Estate Expert</h1><small>Verified listings only</small></div></div>
       <div className="thread">
