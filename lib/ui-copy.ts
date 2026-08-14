@@ -3,7 +3,7 @@ export const uiStringKeys = [
   "demoConcepts", "propertyDisclaimer", "photos", "openGallery", "closeGallery", "previousPhoto", "nextPhoto",
   "illustrativeDemo", "syntheticNotice", "suggestedPrompts", "propertyRequest", "globalPropertyIntelligence",
   "realEstateExpert", "hereToHelp", "exactMatches", "nearbyAlternatives", "verifiedResults", "noResults",
-  "rentPerMonth", "beds", "baths", "retrievedFrom", "verifyListing",
+  "rentPerMonth", "beds", "baths", "retrievedFrom", "verifyListing", "requestFailed",
 ] as const;
 
 export type UiStringKey = (typeof uiStringKeys)[number];
@@ -21,6 +21,6 @@ export const defaultUi: UiCopy = {
   realEstateExpert: "Real Estate Expert", hereToHelp: "Here to help", exactMatches: "Exact matches", nearbyAlternatives: "Nearby alternatives",
   verifiedResults: "Verified results from {provider}, retrieved {time}.", noResults: "No verified listing met the current brief.",
   rentPerMonth: "/ month", beds: "beds", baths: "baths", retrievedFrom: "Retrieved from {source} · {time}",
-  verifyListing: "Verify listing and availability",
+  verifyListing: "Verify listing and availability", requestFailed: "We couldn’t complete that request. Please try again.",
   suggestions: ["Apartments in Barcelona under €350,000", "Luxury villas in Mykonos", "Affordable village homes in Italy", "Family homes near the beach", "Investment properties worldwide"],
 };
