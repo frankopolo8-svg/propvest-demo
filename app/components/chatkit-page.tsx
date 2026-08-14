@@ -11,6 +11,8 @@ type Message = { role: "assistant" | "user"; text: string };
 type SpeechRecognitionEventLike = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
 type SpeechRecognitionInstance = { lang: string; continuous: boolean; interimResults: boolean; start(): void; stop(): void; onresult: ((event: SpeechRecognitionEventLike) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; };
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+const languages = [{ code: "el", label: "Ελληνικά" }, { code: "en", label: "English" }, { code: "es", label: "Español" }, { code: "fr", label: "Français" }, { code: "de", label: "Deutsch" }, { code: "it", label: "Italiano" }, { code: "pt", label: "Português" }, { code: "tr", label: "Türkçe" }, { code: "ar", label: "العربية" }, { code: "zh", label: "中文" }, { code: "ja", label: "日本語" }];
+const languageStorageKey = "propvest-language";
 declare global { interface Window { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor; } }
 
 export function ChatKitPage() {
@@ -18,6 +20,7 @@ export function ChatKitPage() {
   const [messages, setMessages] = useState<Message[]>([{ role: "assistant", text: defaultUi.greeting }]);
   const [criteria, setCriteria] = useState<Criteria>({});
   const [ui, setUi] = useState<UiCopy>(defaultUi);
+  const [locale, setLocale] = useState("en");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,18 +29,27 @@ export function ChatKitPage() {
   const recognition = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
-    const locale = navigator.language;
-    fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "ui", locale }) })
-      .then((response) => response.ok ? response.json() as Promise<{ ui?: Partial<UiCopy> }> : undefined)
-      .then((result) => { if (result?.ui) setUi((current) => ({ ...current, ...result.ui })); })
-      .catch(() => undefined);
+    const stored = window.localStorage.getItem(languageStorageKey);
+    const preferred = stored || navigator.language || "en";
+    setLocale(languages.some((language) => language.code === preferred) ? preferred : preferred.split("-")[0]);
   }, []);
 
   useEffect(() => {
-    if (!ui.locale) return;
-    document.documentElement.lang = ui.locale;
-    document.documentElement.dir = /^(ar|fa|he|ur)(-|$)/i.test(ui.locale) ? "rtl" : "ltr";
-  }, [ui.locale]);
+    fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "ui", locale }) })
+      .then((response) => response.ok ? response.json() as Promise<{ ui?: Partial<UiCopy> }> : undefined)
+      .then((result) => { if (result?.ui) setUi((current) => ({ ...current, ...result.ui, locale })); })
+      .catch(() => undefined);
+  }, [locale]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = /^(ar|fa|he|ur)(-|$)/i.test(locale) ? "rtl" : "ltr";
+  }, [locale]);
+
+  function changeLanguage(nextLocale: string) {
+    window.localStorage.setItem(languageStorageKey, nextLocale);
+    setLocale(nextLocale);
+  }
 
   function toggleDictation() {
     if (recognition.current) { recognition.current.stop(); return; }
@@ -62,7 +74,7 @@ export function ChatKitPage() {
     const history = appendMessage ? [...messages, message] : messages;
     setDraft(""); setError(null); setLastMessage(message); if (appendMessage) setMessages(history); setLoading(true);
     try {
-      const conversation = await fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, criteria }) });
+      const conversation = await fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, criteria, locale }) });
       const turn = await conversation.json() as { reply?: string; criteria?: Criteria; ui?: Partial<UiCopy>; error?: string };
       if (!conversation.ok || !turn.reply) throw new Error();
       if (turn.ui) setUi((current) => ({ ...current, ...turn.ui }));
@@ -70,20 +82,33 @@ export function ChatKitPage() {
       setCriteria(nextCriteria);
       setMessages((current) => [...current, { role: "assistant", text: turn.reply! }]);
       if (!nextCriteria.location) return;
-
-      const response = await fetch("/api/property-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: nextCriteria.location, mode: nextCriteria.mode ?? "sale", maxPrice: nextCriteria.maxPrice, minBedrooms: nextCriteria.minBedrooms, allowNearby: nextCriteria.allowNearby ?? false }) });
-      const body = await response.json() as SearchResponse & { error?: string };
-      if (!response.ok) throw new Error();
-      setResults(body);
+      await searchProperties(nextCriteria);
     } catch { setError(ui.requestFailed); }
     finally { setLoading(false); }
   }
 
+  async function searchProperties(nextCriteria: Criteria) {
+    const response = await fetch("/api/property-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: nextCriteria.location, mode: nextCriteria.mode ?? "sale", maxPrice: nextCriteria.maxPrice, minBedrooms: nextCriteria.minBedrooms, allowNearby: nextCriteria.allowNearby ?? false }) });
+    const body = await response.json() as SearchResponse & { error?: string };
+    if (!response.ok) throw new Error();
+    setResults(body);
+  }
+
+  async function retry() {
+    if (loading) return;
+    if (messages.at(-1)?.role === "assistant" && criteria.location) {
+      setError(null); setLoading(true);
+      try { await searchProperties(criteria); } catch { setError(ui.requestFailed); } finally { setLoading(false); }
+      return;
+    }
+    if (lastMessage) await submitMessage(lastMessage, false);
+  }
+
   function reset() { setDraft(""); setCriteria({}); setResults(null); setError(null); setMessages([{ role: "assistant", text: ui.greeting }]); }
 
-  return <main className="chatbot-page"><header><a className="brand" href="/"><span>p</span>propvest.</a></header><GlobalPropertyShowcase brief={criteria} copy={ui} />
+  return <main className="chatbot-page"><header><a className="brand" href="/"><span>p</span>propvest.</a><select className="language" value={locale} onChange={(event) => changeLanguage(event.target.value)} aria-label={ui.language}>{languages.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}</select></header><GlobalPropertyShowcase brief={criteria} copy={ui} />
     <section className="chat-window" id="property-chat"><div className="chat-head"><div><p>{ui.globalPropertyIntelligence}</p><h1>{ui.realEstateExpert}</h1><small>● {ui.hereToHelp}</small></div><button onClick={reset}>{ui.newChat}</button></div>
-      <div className="thread" aria-live="polite">{messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><div className="bubble">{message.text}</div></div>)}{loading && <div className="typing"><i/><i/><i/></div>}{error && <div className="search-error" role="alert"><p>{error}</p>{lastMessage && <button type="button" onClick={() => submitMessage(lastMessage, false)}>{ui.tryAgain}</button>}</div>}{results && <SearchResults results={results} copy={ui} />}</div>
+      <div className="thread" aria-live="polite">{messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><div className="bubble">{message.text}</div></div>)}{loading && <div className="typing"><i/><i/><i/></div>}{error && <div className="search-error" role="alert"><p>{error}</p>{lastMessage && <button type="button" onClick={retry}>{ui.tryAgain}</button>}</div>}{results && <SearchResults results={results} copy={ui} />}</div>
       <div className="chat-suggestions" aria-label={ui.suggestedPrompts}>{ui.suggestions.map((suggestion) => <button key={suggestion} onClick={() => setDraft(suggestion)}>{suggestion}</button>)}</div>
       <form className="chat-composer" onSubmit={send}><label><span>✦</span><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={ui.input} aria-label={ui.propertyRequest} /></label><button className={`dictation ${dictating ? "active" : ""}`} type="button" onClick={toggleDictation} aria-label={dictating ? ui.stopDictation : ui.startDictation}>⌁</button>{draft && <button className="clear-draft" type="button" onClick={() => setDraft("")}>{ui.clear}</button>}<button type="submit" disabled={loading}>{loading ? "…" : ui.send}</button></form><p className="disclaimer">{ui.liveDisclaimer}</p>
     </section>
