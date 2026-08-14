@@ -21,6 +21,7 @@ export function ChatKitPage() {
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastMessage, setLastMessage] = useState<Message | null>(null);
   const [dictating, setDictating] = useState(false);
   const recognition = useRef<SpeechRecognitionInstance | null>(null);
 
@@ -54,8 +55,12 @@ export function ChatKitPage() {
     event.preventDefault();
     const text = draft.trim();
     if (!text || loading) return;
-    const history = [...messages, { role: "user" as const, text }];
-    setDraft(""); setError(null); setMessages(history); setLoading(true);
+    await submitMessage({ role: "user", text }, true);
+  }
+
+  async function submitMessage(message: Message, appendMessage: boolean) {
+    const history = appendMessage ? [...messages, message] : messages;
+    setDraft(""); setError(null); setLastMessage(message); if (appendMessage) setMessages(history); setLoading(true);
     try {
       const conversation = await fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, criteria }) });
       const turn = await conversation.json() as { reply?: string; criteria?: Criteria; ui?: Partial<UiCopy>; error?: string };
@@ -78,7 +83,7 @@ export function ChatKitPage() {
 
   return <main className="chatbot-page"><header><a className="brand" href="/"><span>p</span>propvest.</a></header><GlobalPropertyShowcase brief={criteria} copy={ui} />
     <section className="chat-window" id="property-chat"><div className="chat-head"><div><p>{ui.globalPropertyIntelligence}</p><h1>{ui.realEstateExpert}</h1><small>● {ui.hereToHelp}</small></div><button onClick={reset}>{ui.newChat}</button></div>
-      <div className="thread" aria-live="polite">{messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><div className="bubble">{message.text}</div></div>)}{loading && <div className="typing"><i/><i/><i/></div>}{error && <p className="search-error" role="alert">{error}</p>}{results && <SearchResults results={results} copy={ui} />}</div>
+      <div className="thread" aria-live="polite">{messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}><div className="bubble">{message.text}</div></div>)}{loading && <div className="typing"><i/><i/><i/></div>}{error && <div className="search-error" role="alert"><p>{error}</p>{lastMessage && <button type="button" onClick={() => submitMessage(lastMessage, false)}>{ui.tryAgain}</button>}</div>}{results && <SearchResults results={results} copy={ui} />}</div>
       <div className="chat-suggestions" aria-label={ui.suggestedPrompts}>{ui.suggestions.map((suggestion) => <button key={suggestion} onClick={() => setDraft(suggestion)}>{suggestion}</button>)}</div>
       <form className="chat-composer" onSubmit={send}><label><span>✦</span><input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={ui.input} aria-label={ui.propertyRequest} /></label><button className={`dictation ${dictating ? "active" : ""}`} type="button" onClick={toggleDictation} aria-label={dictating ? ui.stopDictation : ui.startDictation}>⌁</button>{draft && <button className="clear-draft" type="button" onClick={() => setDraft("")}>{ui.clear}</button>}<button type="submit" disabled={loading}>{loading ? "…" : ui.send}</button></form><p className="disclaimer">{ui.liveDisclaimer}</p>
     </section>
