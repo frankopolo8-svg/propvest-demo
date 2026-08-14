@@ -33,14 +33,15 @@ export function GlobalPropertyShowcase({ brief = {}, copy }: { brief?: DemoBrief
 
 function createConcepts(brief: DemoBrief, copy: UiCopy): DemoProperty[] {
   const location = brief.location || copy.propertySupport;
-  const type = brief.propertyType || copy.propertyIdeas;
+  const types = brief.propertyType ? Array(6).fill(brief.propertyType) : copy.propertyTypes;
+  const type = (index: number) => types[index % types.length] || copy.propertyIdeas;
   const budget = brief.maxPrice;
   const beds = brief.minBedrooms || 2;
   const price = (ratio: number) => budget ? formatPrice(Math.max(35_000, Math.round(budget * ratio))) : ["€165k", "€320k", "€640k", "€1.25m"][Math.round(ratio * 3)];
   const concepts = [
-    [copy.bestMatch, type, 0.92], [copy.bestValue, type, 0.78], [copy.lowerCostOption, type, 0.62],
-    [copy.largerOption, type, 0.98], [copy.premiumOption, type, 1.08], [copy.alternativeStyle, type, 0.88],
+    [copy.bestMatch, 0.92], [copy.bestValue, 0.78], [copy.lowerCostOption, 0.62],
+    [copy.largerOption, 0.98], [copy.premiumOption, 1.08], [copy.alternativeStyle, 0.88],
   ] as const;
-  return concepts.map(([label, title, ratio], index) => ({ label, title, location, type, price: price(ratio), facts: `${beds + (index === 2 ? 1 : 0)} ${copy.beds} · ${beds > 2 ? 2 : 1} ${copy.baths} · ${70 + index * 35} m²`, description: copy.propertyDisclaimer, features: [copy.propertySupport, copy.propertyIdeas, copy.demoConcepts], images: imageSets[index] }));
+  return concepts.map(([label, ratio], index) => ({ label, title: type(index), location, type: type(index), price: price(ratio), facts: `${beds + (index === 2 ? 1 : 0)} ${copy.beds} · ${beds > 2 ? 2 : 1} ${copy.baths} · ${70 + index * 35} m²`, description: copy.propertyDisclaimer, features: [copy.propertySupport, copy.propertyIdeas, copy.demoConcepts], images: imageSets[index] }));
 }
 function formatPrice(value: number) { return value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(2)}m` : `€${Math.round(value / 1000)}k`; }
