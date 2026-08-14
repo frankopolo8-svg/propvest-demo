@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 type Criteria = { location?: string; mode?: "sale" | "rent"; maxPrice?: number; minBedrooms?: number; allowNearby?: boolean; propertyType?: string };
 type Turn = { role: "assistant" | "user"; text: string };
-type ConversationRequest = { messages: Turn[]; criteria?: Criteria };
+type ConversationRequest = { messages: Turn[]; criteria?: Criteria; locale?: string };
 type UiRequest = { type: "ui"; locale?: string };
 
 export async function POST(request: Request) {
@@ -29,9 +29,9 @@ Rules:
 - Keep replies concise, professional, and natural. Ask only one useful follow-up when needed.
 - Never invent or claim current listings, prices, addresses, availability, agencies, or market facts. Live results come from a separate provider.
 - Return only JSON. For a conversation request return reply (string), criteria, and ui. For a UI-only request return ui only.
-- ui must contain locale (BCP 47), all these localized strings: ${uiStringKeys.join(", ")}, suggestions (3 to 5 natural local-language property prompts), and propertyTypes (six distinct localized labels for villa, village house, detached family home, coastal residence, mountain home, and premium residence). Preserve {provider}, {source}, and {time} placeholders in template strings.
+- ui must contain locale (BCP 47), all these localized strings: ${uiStringKeys.join(", ")}, suggestions (3 to 5 natural local-language property prompts), propertyTypes (six distinct localized labels for villa, village house, detached family home, coastal residence, mountain home, and premium residence), tryAgain, and language. Preserve {provider}, {source}, and {time} placeholders in template strings.
 
-Requested UI locale: ${isUiRequest(body) ? body.locale ?? "" : "derive from the latest client message"}
+Requested UI locale: ${isUiRequest(body) ? body.locale ?? "" : isConversationRequest(body) ? body.locale ?? "derive from the latest client message" : ""}
 Current retained criteria: ${JSON.stringify(isConversationRequest(body) ? body.criteria ?? {} : {})}
 Conversation:
 ${transcript}`;
@@ -45,8 +45,9 @@ ${transcript}`;
   } catch { return NextResponse.json({ error: "The conversation service is unavailable." }, { status: 502 }); }
 }
 
-function isConversationRequest(value: unknown): value is ConversationRequest { return !!value && typeof value === "object" && Array.isArray((value as { messages?: unknown }).messages) && (value as { messages: unknown[] }).messages.every(isTurn); }
-function isUiRequest(value: unknown): value is UiRequest { const locale = value && typeof value === "object" ? (value as { locale?: unknown }).locale : undefined; return !!value && typeof value === "object" && (value as { type?: unknown }).type === "ui" && (locale === undefined || (typeof locale === "string" && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale))); }
+function isConversationRequest(value: unknown): value is ConversationRequest { const locale = value && typeof value === "object" ? (value as { locale?: unknown }).locale : undefined; return !!value && typeof value === "object" && Array.isArray((value as { messages?: unknown }).messages) && (value as { messages: unknown[] }).messages.every(isTurn) && (locale === undefined || isLocale(locale)); }
+function isUiRequest(value: unknown): value is UiRequest { const locale = value && typeof value === "object" ? (value as { locale?: unknown }).locale : undefined; return !!value && typeof value === "object" && (value as { type?: unknown }).type === "ui" && (locale === undefined || isLocale(locale)); }
+function isLocale(value: unknown): value is string { return typeof value === "string" && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(value); }
 function isTurn(value: unknown): value is Turn { return !!value && typeof value === "object" && ((value as { role?: unknown }).role === "assistant" || (value as { role?: unknown }).role === "user") && typeof (value as { text?: unknown }).text === "string" && (value as { text: string }).text.trim().length > 0; }
 function parseAssistantResponse(text: string) { const candidate = text.replace(/^```json\s*|\s*```$/g, "").trim(); try { const parsed = JSON.parse(candidate) as { reply?: unknown; criteria?: unknown; ui?: unknown }; const ui = sanitizeUi(parsed.ui); if (typeof parsed.reply === "string" && parsed.reply.trim()) return { reply: parsed.reply.trim(), criteria: sanitizeCriteria(parsed.criteria), ui }; if (Object.keys(ui).length) return { reply: undefined, criteria: {}, ui }; } catch { /* plain text fallback */ } return { reply: text.trim(), criteria: {}, ui: {} }; }
 function sanitizeUi(value: unknown): Partial<UiCopy> { if (!value || typeof value !== "object") return {}; const input = value as Record<string, unknown>; const strings = Object.fromEntries(uiStringKeys.flatMap((key) => typeof input[key] === "string" && input[key].trim() ? [[key, input[key].trim().slice(0, 240)]] : [])); const suggestions = Array.isArray(input.suggestions) ? input.suggestions.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 160)).slice(0, 5) : undefined; const propertyTypes = Array.isArray(input.propertyTypes) ? input.propertyTypes.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 100)).slice(0, 6) : undefined; const locale = typeof input.locale === "string" && /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(input.locale) ? input.locale : undefined; return { ...strings, ...(suggestions ? { suggestions } : {}), ...(propertyTypes ? { propertyTypes } : {}), ...(locale ? { locale } : {}) } as Partial<UiCopy>; }
