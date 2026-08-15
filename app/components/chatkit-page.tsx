@@ -36,13 +36,6 @@ export function ChatKitPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "ui", locale }) })
-      .then((response) => response.ok ? response.json() as Promise<{ ui?: Partial<UiCopy> }> : undefined)
-      .then((result) => { if (result?.ui) setUi((current) => ({ ...current, ...result.ui, locale })); })
-      .catch(() => undefined);
-  }, [locale]);
-
-  useEffect(() => {
     document.documentElement.lang = locale;
     document.documentElement.dir = /^(ar|fa|he|ur)(-|$)/i.test(locale) ? "rtl" : "ltr";
   }, [locale]);
