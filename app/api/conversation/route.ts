@@ -141,7 +141,16 @@ function isLocale(value: unknown): value is string { return typeof value === "st
 function isCriteria(value: unknown) { return !!value && typeof value === "object"; }
 function isPreferences(value: unknown) { return !!value && typeof value === "object"; }
 function sanitizeCriteria(value: unknown): Criteria { if (!value || typeof value !== "object") return {}; const input = value as Record<string, unknown>; return { location: string(input.location, 200), mode: input.mode === "sale" || input.mode === "rent" ? input.mode : undefined, maxPrice: number(input.maxPrice), minBedrooms: number(input.minBedrooms), allowNearby: input.allowNearby === true ? true : undefined, propertyType: string(input.propertyType, 100) }; }
-function sanitizeUi(value: unknown): Partial<UiCopy> { if (!value || typeof value !== "object") return {}; const input = value as Record<string, unknown>; const strings = Object.fromEntries(uiStringKeys.flatMap((key) => typeof input[key] === "string" && input[key].trim() ? [[key, input[key].trim().slice(0, 240)]] : [])); const suggestions = Array.isArray(input.suggestions) ? input.suggestions.filter((item): item is string => typeof item === "string" && item.trim()).map((item) => item.trim().slice(0, 160)).slice(0, 5) : undefined; const propertyTypes = Array.isArray(input.propertyTypes) ? input.propertyTypes.filter((item): item is string => typeof item === "string" && item.trim()).map((item) => item.trim().slice(0, 100)).slice(0, 6) : undefined; const locale = isLocale(input.locale) ? input.locale : undefined; return { ...strings, ...(suggestions ? { suggestions } : {}), ...(propertyTypes ? { propertyTypes } : {}), ...(locale ? { locale } : {}) } as Partial<UiCopy>; }
+function sanitizeUi(value: unknown): Partial<UiCopy> {
+  if (!value || typeof value !== "object") return {};
+  const input = value as Record<string, unknown>;
+  const strings = Object.fromEntries(uiStringKeys.flatMap((key) => typeof input[key] === "string" && input[key].trim() ? [[key, input[key].trim().slice(0, 240)]] : []));
+  const nonEmptyString = (item: unknown): item is string => typeof item === "string" && item.trim().length > 0;
+  const suggestions = Array.isArray(input.suggestions) ? input.suggestions.filter(nonEmptyString).map((item) => item.trim().slice(0, 160)).slice(0, 5) : undefined;
+  const propertyTypes = Array.isArray(input.propertyTypes) ? input.propertyTypes.filter(nonEmptyString).map((item) => item.trim().slice(0, 100)).slice(0, 6) : undefined;
+  const locale = isLocale(input.locale) ? input.locale : undefined;
+  return { ...strings, ...(suggestions ? { suggestions } : {}), ...(propertyTypes ? { propertyTypes } : {}), ...(locale ? { locale } : {}) } as Partial<UiCopy>;
+}
 function string(value: unknown, max: number) { return typeof value === "string" ? value.trim().slice(0, max) || undefined : undefined; }
 function number(value: unknown) { return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined; }
 function noStore() { return { headers: { "Cache-Control": "no-store" } }; }
