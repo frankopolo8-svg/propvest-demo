@@ -1,27 +1,24 @@
 # Propvest
 
-A Next.js property-search UI that displays only listings retrieved from a configured external provider. It does not ship demo inventory, fabricated asking prices, or inferred availability.
+A Next.js real-estate assistant backed by the OpenAI Responses API and a configured live property-inventory provider. The conversation endpoint validates bounded history, selected locale, retained criteria, and user preferences; it returns a structured AI reply and, when the model has enough search criteria, verified inventory results in the same response.
 
-## Configure multilingual conversation
+## Production configuration
 
-Set `OPENAI_API_KEY` and `OPENAI_CHAT_MODEL` as server-only variables. The conversation route uses the client’s latest message to select the reply language, carries the property brief across language changes, and returns translated UI labels. It never creates live-listing facts; listing results still come only from the configured provider.
+Configure these server-only [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for both Preview and Production:
 
-## Configure live inventory
+- `OPENAI_API_KEY`: API key for the real conversation model.
+- `OPENAI_CHAT_MODEL`: optional model override; defaults to `gpt-4.1-mini`.
+- `PROPERTY_SEARCH_API_URL`: live inventory search endpoint.
+- `PROPERTY_SEARCH_API_KEY`: provider credential sent as a Bearer token.
+- `PROPERTY_SEARCH_PROVIDER`: name displayed for verified listing results.
 
-Set these server-only variables in [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables):
+The inventory endpoint receives `location`, `mode`, optional price, bedrooms, bathrooms, area, currency, features, and `allowNearby`. It must respond with `listings` or `results`; each returned listing requires `id`, `title`, `location`, `price`, `currency`, `listingUrl`, and `source`.
 
-- `PROPERTY_SEARCH_API_URL`: provider search endpoint; receives a `POST` request.
-- `PROPERTY_SEARCH_API_KEY`: provider credential; sent as a Bearer token.
-- `PROPERTY_SEARCH_PROVIDER`: source label shown beside retrieved listings.
+No demo replies, generated inventory, placeholder prices, or static fallback answers are returned when a provider is unavailable. The frontend receives structured errors and preserves the conversation so users can retry.
 
-The provider request body contains `location`, `mode`, optional price/bedroom/bathroom/area constraints, requested features, and `allowNearby`. The response must return either `listings` or `results`; every usable item requires `id`, `title`, `location`, `price`, `currency`, `listingUrl`, and `source`. Optional normalizations include `beds`/`bedrooms`, `baths`/`bathrooms`, `sqm`/`areaSqm`, `imageUrl`, and `features`.
-
-The server endpoint strictly filters hard requirements, deduplicates listings by source and listing ID, ranks matches, and returns exact matches separately from nearby opportunities. Prices remain provider-supplied values and each card links to the source for final verification.
-
-## Development
+## Validation
 
 ```bash
-npm install
 npm run typecheck
 npm run build
 ```
