@@ -16,9 +16,22 @@ The inventory endpoint receives `location`, `mode`, optional price, bedrooms, ba
 
 No demo replies, generated inventory, placeholder prices, or static fallback answers are returned when a provider is unavailable. The frontend receives structured errors and preserves the conversation so users can retry.
 
+## Deployment
+
+This chatbot requires server-side configuration of OpenAI API credentials.
+
+**Before deploying**, follow the setup in [DEPLOYMENT.md](./DEPLOYMENT.md) to:
+1. Get an OpenAI API key
+2. Configure environment variables in your hosting platform
+3. Run the verification script
+4. Test the `/api/conversation` endpoint
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete instructions.
+
 ## Validation
 
 ```bash
 npm run typecheck
+npm run verify:config
 npm run build
 ```
