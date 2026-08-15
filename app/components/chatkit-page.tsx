@@ -77,11 +77,12 @@ export function ChatKitPage() {
     try {
       const conversation = await fetch("/api/conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, criteria, locale, preferences }) });
       const turn = await conversation.json() as { reply?: string; criteria?: Criteria; ui?: Partial<UiCopy>; properties?: SearchResponse; propertySearchError?: string; error?: string };
-      if (!conversation.ok || !turn.reply) throw new Error(turn.error || "Conversation request failed");
+      const reply = turn.reply;
+      if (!conversation.ok || !reply) throw new Error(turn.error || "Conversation request failed");
       if (turn.ui) setUi((current) => ({ ...current, ...turn.ui }));
       const nextCriteria = mergeCriteria(criteria, turn.criteria ?? {});
       setCriteria(nextCriteria);
-      setMessages((current) => [...current, { role: "assistant", text: turn.reply }]);
+      setMessages((current) => [...current, { role: "assistant", text: reply }]);
       if (turn.properties) setResults(turn.properties);
       if (turn.propertySearchError) setError(turn.propertySearchError);
     } catch { setError(ui.requestFailed); }
