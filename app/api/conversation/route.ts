@@ -18,20 +18,49 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Generate a stable user ID from the message history (deterministic per conversation)
+    const messageText = body.messages.map(m => m.text).join('|');
+    const userId = `user-${Math.abs(messageText.split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 0)).toString(36)}`;
+
+    const sessionRequest = {
+      workflow_id: workflowId,
+      model: "gpt-4o",
+      user_id: userId
+    };
+
     const upstream = await fetch("https://api.openai.com/v1/chatkit/sessions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ workflow_id: workflowId, model: "gpt-4o" }),
+      body: JSON.stringify(sessionRequest),
       cache: "no-store",
       signal: AbortSignal.timeout(20_000),
     });
-    const payload = await upstream.json().catch(() => ({})) as { client_secret?: string; session_id?: string; error?: { message?: string } };
+
+    const payload = await upstream.json().catch(() => ({})) as { 
+      client_secret?: string; 
+      session_id?: string; 
+      error?: { message?: string; type?: string; code?: string }
+    };
+
     if (!upstream.ok || !payload.client_secret || !payload.session_id) {
-      console.error("chatkit.session.failed", { status: upstream.status, message: payload.error?.message || "missing session credentials" });
+      const errorMsg = payload.error?.message || "missing session credentials";
+      const errorCode = payload.error?.code || payload.error?.type || "unknown";
+      console.error("chatkit.session.failed", { 
+        status: upstream.status, 
+        errorCode,
+        message: errorMsg,
+        hasApiKey: Boolean(apiKey),
+        hasWorkflowId: Boolean(workflowId),
+        userIdLength: userId.length
+      });
       return error("Session creation failed", 502, body.locale);
     }
 
-    console.info("chatkit.session.created", { workflowId, sessionId: payload.session_id });
+    console.info("chatkit.session.created", { 
+      sessionIdLength: payload.session_id.length,
+      clientSecretLength: payload.client_secret.length,
+      userId: userId.substring(0, 20) // Log only first 20 chars for audit
+    });
     return NextResponse.json({ clientSecret: payload.client_secret, sessionId: payload.session_id }, noStore());
   } catch (cause) {
     console.error("chatkit.session.failed", { message: cause instanceof Error ? cause.message : "unknown error" });
